@@ -1,0 +1,7 @@
+id,data_evento,data_registro,tipo,valor,categoria,descricao,forma_pagamento,observacoes,mensagem_original
+1,2026-04-16,2026-04-16 12:50:39,saida,25.0,alimentacao,almoço,,,gastei 25 no almoço
+2,2026-04-16,2026-04-16 12:50:39,entrada,2500.0,trabalho,sem descricao,,,recebi 2500 de salário
+3,2026-04-16,2026-04-16 12:50:39,entrada,2500.0,trabalho,sem descricao,,,ganhei 2500 de salario
+4,2026-04-16,2026-04-16 12:50:39,entrada,2500.0,trabalho,sem descricao,,,2500 salário
+5,2026-04-16,2026-04-16 13:01:30,saida,30.0,alimentacao,almoco,,,gastei 30 no almoco
+6,2026-04-16,2026-04-16 13:01:43,saida,25.0,transporte,em gasolina,,,gastei 25 em gasolina
