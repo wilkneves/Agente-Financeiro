@@ -39,7 +39,6 @@ def load_data() -> pd.DataFrame:
         df.to_csv(CSV_FILE, index=False)
         return df
 
-    # Garante que, mesmo se o arquivo estiver estranho, as colunas existam
     if df.empty and list(df.columns) != COLUMNS:
         df = pd.DataFrame(columns=COLUMNS)
         df.to_csv(CSV_FILE, index=False)
@@ -62,4 +61,90 @@ def next_id() -> int:
     df = load_data()
     if df.empty:
         return 1
-    return int(pd.to_numeric(df["id"], errors="coerce").max()) + 1
+
+    ids = pd.to_numeric(df["id"], errors="coerce").dropna()
+    if ids.empty:
+        return 1
+
+    return int(ids.max()) + 1
+
+
+def delete_last_entry() -> dict | None:
+    df = load_data()
+    if df.empty:
+        return None
+
+    df["id_num"] = pd.to_numeric(df["id"], errors="coerce")
+    df = df.sort_values("id_num")
+    removed = df.iloc[-1].to_dict()
+    df = df.iloc[:-1].drop(columns=["id_num"])
+    save_data(df)
+    removed.pop("id_num", None)
+    return removed
+
+
+def delete_entry_by_description(description: str) -> dict | None:
+    df = load_data()
+    if df.empty:
+        return None
+
+    df["descricao"] = df["descricao"].astype(str)
+    df["id_num"] = pd.to_numeric(df["id"], errors="coerce")
+
+    matches = df[df["descricao"].str.lower().str.contains(description.lower(), na=False)]
+    if matches.empty:
+        return None
+
+    matches = matches.sort_values("id_num")
+    idx = matches.index[-1]
+    removed = df.loc[idx].to_dict()
+    df = df.drop(index=idx).drop(columns=["id_num"])
+    save_data(df)
+    removed.pop("id_num", None)
+    return removed
+
+
+def update_entry_value_by_description(description: str, new_value: float) -> dict | None:
+    df = load_data()
+    if df.empty:
+        return None
+
+    df["descricao"] = df["descricao"].astype(str)
+    df["id_num"] = pd.to_numeric(df["id"], errors="coerce")
+
+    matches = df[df["descricao"].str.lower().str.contains(description.lower(), na=False)]
+    if matches.empty:
+        return None
+
+    matches = matches.sort_values("id_num")
+    idx = matches.index[-1]
+    df.loc[idx, "valor"] = new_value
+
+    updated = df.loc[idx].to_dict()
+    df = df.drop(columns=["id_num"])
+    save_data(df)
+    updated.pop("id_num", None)
+    return updated
+
+
+def update_entry_category_by_description(description: str, new_category: str) -> dict | None:
+    df = load_data()
+    if df.empty:
+        return None
+
+    df["descricao"] = df["descricao"].astype(str)
+    df["id_num"] = pd.to_numeric(df["id"], errors="coerce")
+
+    matches = df[df["descricao"].str.lower().str.contains(description.lower(), na=False)]
+    if matches.empty:
+        return None
+
+    matches = matches.sort_values("id_num")
+    idx = matches.index[-1]
+    df.loc[idx, "categoria"] = new_category.strip().lower()
+
+    updated = df.loc[idx].to_dict()
+    df = df.drop(columns=["id_num"])
+    save_data(df)
+    updated.pop("id_num", None)
+    return updated

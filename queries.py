@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 
 from storage import load_data
 
 
-def _load_current_month() -> pd.DataFrame:
+def _prepare_df() -> pd.DataFrame:
     df = load_data()
     if df.empty:
         return df
@@ -15,14 +15,30 @@ def _load_current_month() -> pd.DataFrame:
     df["valor"] = pd.to_numeric(df["valor"], errors="coerce").fillna(0)
     df["tipo"] = df["tipo"].astype(str).str.strip().str.lower()
     df["categoria"] = df["categoria"].astype(str).str.strip().str.lower()
+    df["descricao"] = df["descricao"].astype(str).str.strip()
+
+    return df[df["data_evento"].notna()]
+
+
+def _load_current_month() -> pd.DataFrame:
+    df = _prepare_df()
+    if df.empty:
+        return df
 
     now = datetime.now()
 
     return df[
-        df["data_evento"].notna() &
         (df["data_evento"].dt.month == now.month) &
         (df["data_evento"].dt.year == now.year)
     ]
+
+
+def _filter_by_day(target_date) -> pd.DataFrame:
+    df = _prepare_df()
+    if df.empty:
+        return df
+
+    return df[df["data_evento"].dt.date == target_date]
 
 
 def total_expenses_month() -> float:
@@ -54,6 +70,64 @@ def total_by_category_month(category: str) -> float:
         (df["categoria"] == normalized_category)
     ]
     return float(filtered["valor"].sum())
+
+
+def total_expenses_today() -> float:
+    today = datetime.now().date()
+    df = _filter_by_day(today)
+    if df.empty:
+        return 0.0
+    return float(df[df["tipo"] == "saida"]["valor"].sum())
+
+
+def total_expenses_yesterday() -> float:
+    yesterday = datetime.now().date() - timedelta(days=1)
+    df = _filter_by_day(yesterday)
+    if df.empty:
+        return 0.0
+    return float(df[df["tipo"] == "saida"]["valor"].sum())
+
+
+def total_income_today() -> float:
+    today = datetime.now().date()
+    df = _filter_by_day(today)
+    if df.empty:
+        return 0.0
+    return float(df[df["tipo"] == "entrada"]["valor"].sum())
+
+
+def total_income_yesterday() -> float:
+    yesterday = datetime.now().date() - timedelta(days=1)
+    df = _filter_by_day(yesterday)
+    if df.empty:
+        return 0.0
+    return float(df[df["tipo"] == "entrada"]["valor"].sum())
+
+
+def list_recent_entries(limit: int = 5) -> list[dict]:
+    df = _prepare_df()
+    if df.empty:
+        return []
+
+    df["id_num"] = pd.to_numeric(df["id"], errors="coerce")
+    df = df.sort_values("id_num", ascending=False)
+
+    recent = df.head(limit)
+    results = []
+
+    for _, row in recent.iterrows():
+        results.append(
+            {
+                "id": row["id"],
+                "data_evento": row["data_evento"].strftime("%Y-%m-%d"),
+                "tipo": row["tipo"],
+                "valor": float(row["valor"]),
+                "categoria": row["categoria"],
+                "descricao": row["descricao"],
+            }
+        )
+
+    return results
 
 
 def monthly_summary() -> dict:

@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-from app import save_financial_entry, handle_query
+from app import save_financial_entry, handle_query, handle_delete, handle_edit
 from parser import detect_intent
 from storage import ensure_storage
 
@@ -25,6 +25,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if intent in {"registrar_despesa", "registrar_receita"}:
         response = save_financial_entry(text)
+    elif intent in {"apagar_ultimo", "apagar_por_descricao"}:
+        response = handle_delete(text)
+    elif intent == "corrigir_lancamento":
+        response = handle_edit(text)
     else:
         response = handle_query(text)
 

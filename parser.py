@@ -14,12 +14,42 @@ INCOME_HINTS = ["recebi", "entrou", "ganhei", "salario", "salário"]
 def detect_intent(text: str) -> str:
     lowered = text.lower().strip()
 
-    # CONSULTAS primeiro
+    # edição / exclusão primeiro
+    if "apaga o ultimo" in lowered or "apaga o último" in lowered or "remove o ultimo" in lowered or "remove o último" in lowered:
+        return "apagar_ultimo"
+
+    if lowered.startswith("apaga ") or lowered.startswith("remove "):
+        return "apagar_por_descricao"
+
+    if lowered.startswith("corrige "):
+        return "corrigir_lancamento"
+
+    # histórico
+    if "ultimos lançamentos" in lowered or "últimos lançamentos" in lowered or "mostra meus lançamentos" in lowered:
+        return "listar_ultimos_lancamentos"
+
+    # consultas por dia
+    if "gastei hoje" in lowered or "gastos de hoje" in lowered or "o que eu gastei hoje" in lowered:
+        return "consultar_gastos_hoje"
+
+    if "gastei ontem" in lowered or "gastos de ontem" in lowered or "o que eu gastei ontem" in lowered:
+        return "consultar_gastos_ontem"
+
+    if "recebi hoje" in lowered or "o que eu recebi hoje" in lowered:
+        return "consultar_receitas_hoje"
+
+    if "recebi ontem" in lowered or "o que eu recebi ontem" in lowered:
+        return "consultar_receitas_ontem"
+
+    # consultas gerais
     if "resumo" in lowered:
         return "gerar_resumo_mes"
 
     if "saldo" in lowered:
         return "consultar_saldo_mes"
+
+    if "quanto recebi" in lowered:
+        return "consultar_receitas_mes"
 
     if "quanto gastei com" in lowered or "quanto foi" in lowered:
         return "consultar_categoria_mes"
@@ -27,14 +57,13 @@ def detect_intent(text: str) -> str:
     if "quanto gastei" in lowered:
         return "consultar_total_mes"
 
-    # REGISTROS depois
+    # registros
     if any(word in lowered for word in EXPENSE_HINTS):
         return "registrar_despesa"
 
     if any(word in lowered for word in INCOME_HINTS):
         return "registrar_receita"
 
-    # fallback inteligente
     has_number = re.search(r"\d+", lowered)
     if has_number:
         if any(word in lowered for word in ["salario", "salário"]):
@@ -62,16 +91,12 @@ def extract_payment_method(text: str) -> str:
 
     if "pix" in lowered:
         return "pix"
-
     if "cartao" in lowered or "cartão" in lowered:
         return "cartao"
-
     if "dinheiro" in lowered:
         return "dinheiro"
-
     if "debito" in lowered or "débito" in lowered:
         return "debito"
-
     if "credito" in lowered or "crédito" in lowered:
         return "credito"
 
@@ -88,7 +113,6 @@ def extract_date(text: str) -> str:
     if "hoje" in lowered:
         return str(today)
 
-    # Só tenta parsear data se houver padrão real de data
     has_explicit_date = (
         re.search(r"\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b", lowered) or
         re.search(r"\b\d{1,2}-\d{1,2}(?:-\d{2,4})?\b", lowered)
@@ -108,30 +132,13 @@ def extract_description(text: str) -> str:
     lowered = text.lower()
 
     noise = [
-        "gastei",
-        "paguei",
-        "comprei",
-        "recebi",
-        "entrou",
-        "ganhei",
-        "salario",
-        "salário",
-        "no",
-        "na",
-        "com",
-        "de",
-        "do",
-        "da",
-        "ontem",
-        "hoje",
-        "pix",
-        "cartao",
-        "cartão",
-        "dinheiro",
-        "debito",
-        "débito",
-        "credito",
-        "crédito",
+        "gastei", "paguei", "comprei", "recebi", "entrou", "ganhei",
+        "salario", "salário",
+        "no", "na", "em", "com", "de", "do", "da",
+        "o", "a", "os", "as",
+        "ontem", "hoje",
+        "pix", "cartao", "cartão", "dinheiro",
+        "debito", "débito", "credito", "crédito",
     ]
 
     cleaned = re.sub(r"(\d+(?:[.,]\d+)?)", "", lowered)
@@ -141,6 +148,59 @@ def extract_description(text: str) -> str:
 
     cleaned = " ".join(cleaned.split())
     return cleaned.strip() or "sem descricao"
+
+
+def parse_edit_request(text: str) -> dict:
+    lowered = text.lower().strip()
+
+    # corrige o almoço para 40
+    value_match = re.match(r"corrige\s+(.+?)\s+para\s+(\d+(?:[.,]\d+)?)$", lowered)
+    if value_match:
+        return {
+            "tipo_correcao": "valor",
+            "alvo": value_match.group(1).strip(),
+            "novo_valor": float(value_match.group(2).replace(",", ".")),
+        }
+
+    # corrige a gasolina para transporte
+    category_match = re.match(r"corrige\s+(.+?)\s+para\s+([a-zA-Zçãõáéíóúâêôà\s]+)$", lowered)
+    if category_match:
+        return {
+            "tipo_correcao": "categoria",
+            "alvo": category_match.group(1).strip(),
+            "nova_categoria": category_match.group(2).strip(),
+        }
+
+    return {"tipo_correcao": "desconhecido"}
+
+
+def parse_delete_request(text: str) -> dict:
+    lowered = text.lower().strip()
+
+    if "apaga o ultimo" in lowered or "apaga o último" in lowered or "remove o ultimo" in lowered or "remove o último" in lowered:
+        return {"tipo_exclusao": "ultimo"}
+
+    cleaned = lowered
+    for prefix in ["apaga ", "remove "]:
+        if cleaned.startswith(prefix):
+            cleaned = cleaned[len(prefix):]
+            break
+
+    patterns_to_remove = [
+        "o gasto de ", "o gasto da ", "o gasto do ",
+        "a despesa de ", "a despesa da ", "a despesa do ",
+        "o ", "a ", "os ", "as ",
+    ]
+
+    for pattern in patterns_to_remove:
+        if cleaned.startswith(pattern):
+            cleaned = cleaned[len(pattern):]
+            break
+
+    return {
+        "tipo_exclusao": "descricao",
+        "alvo": cleaned.strip(),
+    }
 
 
 def parse_financial_message(text: str) -> dict:
