@@ -5,3 +5,4 @@ id,data_evento,data_registro,tipo,valor,categoria,descricao,forma_pagamento,obse
 4,2026-04-16,2026-04-16 12:50:39,entrada,2500.0,trabalho,sem descricao,,,2500 salário
 5,2026-04-16,2026-04-16 13:01:30,saida,30.0,alimentacao,almoco,,,gastei 30 no almoco
 6,2026-04-16,2026-04-16 13:01:43,saida,25.0,transporte,em gasolina,,,gastei 25 em gasolina
+7,2026-04-16,2026-04-16 22:48:53,saida,50.0,outros,ifood,,,"Gastei 50,00 com ifood"

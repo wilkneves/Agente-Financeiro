@@ -5,7 +5,11 @@ from app import save_financial_entry, handle_query
 from parser import detect_intent
 from storage import ensure_storage
 
-TOKEN = "8771757393:AAGPkSFDnSQsNawmicy_SXMOExZq4uADD4o"
+import os
+
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+if not TOKEN:
+    raise RuntimeError("TELEGRAM_BOT_TOKEN não configurado")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
